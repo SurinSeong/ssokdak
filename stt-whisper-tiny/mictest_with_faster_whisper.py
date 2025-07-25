@@ -150,8 +150,4 @@ dic_list, result_txt = custom_model.run(audio_data)
 # 노이즈 제거된 오디오 저장
 custom_model.save_last_audio()
 
-# if contains_wakeword(result_txt, custom_wakewords):
-#     print("[✅ 웨이크워드 감지됨] 대화 시작!")
-# else:
-#     print("[❌ 호출어 없음] 대기 상태 유지")
 print(result_txt)
