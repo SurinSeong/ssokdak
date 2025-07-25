@@ -6,21 +6,9 @@ import soundfile as sf
 import noisereduce as nr
 
 
-# 노이즈 제거
-def reduce_noise(buffer, sample_rate):
-    # 버퍼를 하나의 오디오 데이터로 결합한다.
-    audio_data = np.frombuffer(b''.join(buffer), dtype=np.int16)
-
-    # 노이즈 감소
-    reduced_noise = nr.reduce_noise(y=audio_data,
-                                    sr=sample_rate,
-                                    prop_decrease=0.0)
-
-    return reduced_noise
-
-
 # 커스텀한 STT 모델
 class Cumtom_whisper:
+
     def __init__(self):
         '''
         최대 4배 빠른 faster whisper를 사용하여 cpu로 저장된 wav파일에 STT 수행
@@ -34,16 +22,14 @@ class Cumtom_whisper:
         try: os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
         except Exception as e: print(f'os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE" 실행해서 발생한 에러. 하지만 무시하고 진행: {e}')
 
+
     def set_model(self, model_name):
         '''
         model_size : tiny, tiny.en, base, base.en, small, small.en, medium, medium.en, large-v1, large-v2, large-v3, or large
         '''
         self.model = WhisperModel(model_name, device="cpu", compute_type="int8")
-        print(f'STT 모델 변경: {model_name}')
+        print(f'STT 모델: {model_name}')
 
-    def set_wakewords(self, wakewords):
-        self.wakewords = wakewords
-        print(f"✅ 웨이크워드 설정됨: {wakewords}")
 
     def run(self, audio, language=None):
         '''
@@ -76,24 +62,10 @@ class Cumtom_whisper:
         
         # 결과 후처리
         dic_list = []
-        wakeword_detected = False    # 감지 유무
 
         for segment in segments:
             if segment.no_speech_prob > 0.6:
                 continue # 말을 안했을 확률이 크다고 감지되면 무시
-
-            segment_text = segment.text.strip()
-
-            # 웨이크워드 탐지
-            for w in self.wakewords:
-                if w in segment_text:
-                    print(f"✅ [웨이크워드 '{w}' 감지됨!] → 즉시 반응 가능")
-                    wakeword_detected = True
-                    break
-            
-            # if wakeword_detected:
-            #     # llm 모델을 준비시킨다.
-            #     pass
 
             for word in segment.words:
                 _word = word.word
@@ -137,17 +109,34 @@ def contains_wakeword(text, wakewords):
 
 
 custom_wakewords = ["도서관"]
+wakeword_detected = False
 
 custom_model = Cumtom_whisper()
-custom_model.set_model('base')
-custom_model.set_wakewords(custom_wakewords)
+custom_model.set_model('small')
 
-audio_data = "./data/_01_F_HYH00_10___00802.wav"
+audio_data = "./data/B-C9884F-C-NULNU-s0mN-C711535-S.wav"
 
 print('wav파일 입력')
+
+# 1. STT 수행
 dic_list, result_txt = custom_model.run(audio_data)
 
 # 노이즈 제거된 오디오 저장
 custom_model.save_last_audio()
 
-print(result_txt)
+# 2. 웨이크워드 탐지
+wakeword_detected = contains_wakeword(result_txt, custom_wakewords)
+
+# 3. 대화 상태 업데이트
+if wakeword_detected:
+    session_state["is_talking"] = True
+    # → LLM에게 전체 result_txt 전달
+    response = send_to_llm(result_txt)
+
+elif session_state.get("is_talking", False):
+    # 웨이크워드는 없지만 대화는 진행 중
+    response = send_to_llm(result_txt)
+
+else:
+    # 대화 중이 아니면 LLM 호출 안 함
+    response = None
