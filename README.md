@@ -105,7 +105,7 @@
 | AI 분석 | Whisper.cpp(STT), HuggingFace(LLM 감정 분석), Coqui TTS |
 | 데이터 저장 | MySQL, S3(녹음 파일), Redis |
 | 디바이스 통신 | MQTT |
-| 배포 | AWS (EC2, RDS, S3) |
+| 배포 | AWS (EC2, RDS, S3), nginx |
 
 ---
 
