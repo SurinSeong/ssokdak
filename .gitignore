@@ -2,3 +2,4 @@ dataset
 wakeword/vits
 data
 MyTTSDataset
+korean-single-speaker-datasets
